@@ -1,0 +1,97 @@
+﻿parameters:
+  DotNetVersion: '8.0.401'
+  UnoCheck_Version: '1.30.1'
+  UnoCheck_Manifest: 'https://raw.githubusercontent.com/unoplatform/uno.check/0ca039bef4097295fc6c2c5c282ae18a797160c1/manifests/uno.ui.manifest.json'
+
+steps:
+- task: GitVersion/setup@0
+  inputs:
+    versionSpec: '5.10.1'
+  displayName: 'Install GitVersion'
+  
+- task: GitVersion/execute@0
+  inputs:
+    useConfigFile: true
+    configFilePath: $(Build.SourcesDirectory)/build/gitversion.yml
+  displayName: 'Calculate version'
+
+- task: UseDotNet@2
+  displayName: 'Use .NET SDK ${{ parameters.DotNetVersion }}'
+  retryCountOnTaskFailure: 3
+  inputs:
+    packageType: sdk
+    version: ${{ parameters.DotNetVersion }}
+    includePreviewVersions: true
+
+- powershell: |
+    & dotnet tool update --global uno.check --version ${{ parameters.UnoCheck_Version }} --add-source https://api.nuget.org/v3/index.json
+    & uno-check -v --ci --non-interactive --fix --skip xcode --skip gtk3 --skip vswin --skip vsmac --skip androidsdk --skip androidemulator --manifest ${{ parameters.UnoCheck_Manifest }}
+  displayName: Install .NET Workloads | Uno-check
+  errorActionPreference: continue
+  ignoreLASTEXITCODE: true
+  retryCountOnTaskFailure: 3
+
+- task: MSBuild@1
+  displayName: 'Restore solution packages'
+  inputs:
+    solution: $(Build.SourcesDirectory)/$(SolutionFileName)
+    msbuildLocationMethod: version
+    msbuildVersion: latest
+    msbuildArchitecture: x64
+    msbuildArguments: >
+      /t:restore
+    configuration: $(ApplicationConfiguration)
+    platform: $(ApplicationPlatform)
+    clean: false
+    maximumCpuCount: true
+    restoreNugetPackages: false
+    logProjectEvents: false
+    createLogFile: false
+
+- task: MSBuild@1
+  displayName: 'Build solution in $(ApplicationConfiguration) | $(ApplicationPlatform)'
+  inputs:
+    solution: $(Build.SourcesDirectory)/$(SolutionFileName)
+    msbuildLocationMethod: version
+    msbuildVersion: latest
+    msbuildArchitecture: x64
+    configuration: $(ApplicationConfiguration)
+    platform: $(ApplicationPlatform)
+    clean: false
+    maximumCpuCount: true
+    restoreNugetPackages: false
+    logProjectEvents: false
+    createLogFile: false
+    msbuildArguments: > # Set the version of the packages, will have no effect on application projects (Heads).
+      /p:PackageVersion=$(GitVersion.SemVer)
+      /p:ContinuousIntegrationBuild=true
+
+- script: >
+    dotnet test $(Build.SourcesDirectory)/$(SolutionFileName)
+    /p:Configuration=$(ApplicationConfiguration)
+    /p:CollectCoverage=true 
+    /p:CoverletOutputFormat=cobertura
+    /p:CoverletOutput=$(Build.SourcesDirectory)/coverage
+    /p:ExcludeByFile="**/*.g.cs"
+    --logger trx
+    --no-build
+  displayName: 'Run tests'
+  condition: succeeded()
+
+- task: PublishTestResults@2
+  displayName: 'Publish test results'
+  condition: succeededOrFailed()
+  inputs:
+    testRunner: VSTest
+    testResultsFiles: '**/*.trx'
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish artifact $(ApplicationConfiguration)'
+  inputs:
+    PathtoPublish: $(PackageOutputPath)
+    ArtifactName: $(ArtifactName)
+    ArtifactType: Container
+
+- task: PostBuildCleanup@3
+  displayName: 'Post-Build cleanup :  Cleanup files to keep build server clean!'
+  condition: always()
