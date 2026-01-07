@@ -1,0 +1,51 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFrameworks>net10.0;net10.0-android;net10.0-ios;net10.0-windows10.0.20348.0</TargetFrameworks>
+		<LangVersion>14.0</LangVersion>
+		<Nullable>enable</Nullable>
+		<NoWarn>Uno0001</NoWarn>
+		<RootNamespace>DeviceCore</RootNamespace>
+		<Authors>nventive</Authors>
+		<Company>nventive</Company>
+		<AssemblyName>DeviceCore.Uno.WinUI</AssemblyName>
+		<PackageId>DeviceCore.Uno.WinUI</PackageId>
+		<Description>Provides cross-platform device APIs for Uno Platform and WinUI, supporting .NET 8, Android, iOS, and Windows targets.</Description>
+		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/nventive/DeviceCore</PackageProjectUrl>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<PackageTags>review;maui;winui;ios;android</PackageTags>
+		<Copyright>https://github.com/nventive/DeviceCore/blob/main/LICENSE</Copyright>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<RepositoryUrl>https://github.com/nventive/DeviceCore</RepositoryUrl>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	</PropertyGroup>
+
+	<!-- This is to include the README.md file in the NuGet package. -->
+	<ItemGroup>
+		<None Include="..\..\..\README.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+		<PackageReference Include="System.Reactive" Version="6.1.0" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)'=='net10.0-android' Or '$(TargetFramework)'=='net10.0-ios'">
+		<PackageReference Include="Uno.WinUI" Version="6.3.62" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.20348.0'">
+		<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
+	</ItemGroup>
+
+	<PropertyGroup Condition="'$(TargetFramework)'=='net10.0-windows10.0.20348.0'">
+		<WindowsSdkPackageVersion>10.0.20348.38</WindowsSdkPackageVersion>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\DeviceCore.Abstractions\DeviceCore.Abstractions.csproj" />
+	</ItemGroup>
+</Project>
